@@ -18,7 +18,7 @@ return array(
     'merchant_id' => '48937',
     'merchant_secret' => '60iyj9td',
     
-    'captcha' => false, // Отключение каптчи
+    'captcha' => true, // Отключение каптчи
     
     'site_key' => '6Ld_5SQUAAAAAAmo67SI6z_jYcPfRQGeCjGpjjNJ',
     'secret_key' => '6Ld_5SQUAAAAALqt1gIzJukFN6ZYp7wvsklOsC3t',
