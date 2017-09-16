@@ -75,7 +75,7 @@
                         <nav class="main-menu">
                             <ul>
                                 <li class=""><a href="/">Главная</a></li> 
-                                <li class=""><a href="/guestbook/1/0/id/desc">Гостевая книга</a></li> 
+                                <li class=""><a href="/guestbook">Гостевая книга</a></li> 
                                 <li class="dropdown">
                                     <a href="#">Серверы</a>
                                     <div class="dropdown_menu" style="display: none;">

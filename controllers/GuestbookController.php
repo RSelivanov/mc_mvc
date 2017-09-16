@@ -9,8 +9,18 @@ class GuestbookController
     /**
      * Action для главной страницы
      */
-    public function actionIndex($page, $search, $key, $order)
+    public function actionIndex($parameters = null)//$page, $search, $key, $order //page=1&key=name&order=asm
     {   
+            //var_dump($_REQUEST);
+            // Парсим в массив
+            parse_str($parameters, $mass);
+            
+            // Получаем данные и делаем их безопасными
+            isset($mass['page']) ? $page = Guestbook::protectionData($mass['page']) : $page = '';
+            isset($mass['search']) ? $search = Guestbook::protectionData($mass['search']) : $search = '';
+            isset($mass['key']) ? $key = Guestbook::protectionData($mass['key']) : $key = '';
+            isset($mass['order']) ? $order = Guestbook::protectionData($mass['order']) :  $order = '';
+            
             // Дефолтные значения
             $username = false;
             $email = false;
@@ -20,7 +30,7 @@ class GuestbookController
             $file_name = '';  
             
             // Флаг Создать новое сообщение или обновить старое (false - создать новое)
-            $edit_message_button = false;
+            //$edit_message_button = false;
             
             // Флаг ошибок
             $errors = false;
@@ -29,18 +39,18 @@ class GuestbookController
             $ip = $_SERVER['REMOTE_ADDR'];
 
             // Получаем данные и делаем их безопасными
-            $search = Guestbook::protectionData($search); 
+            //$search = Guestbook::protectionData($search); 
             
             // Обратимся к методу который позволит узнать количество записей с учетом поиска.
             $count_messages = Guestbook::countMessagesFromGuestbook($search);
             
             // Вызываем метод для генерации страниц
             $pagination = Guestbook::pagesGenerator($count_messages, $page);
-            
+            //var_dump($_POST);
             if(!empty($_POST)) 
             {
                 if(isset($_POST["new_message"]))
-                {      
+                {  
                     $path_files = ROOT . Config::getInstance()->get('path_files');
                     
                     // Получаем данные из формы и делаем их безопасными
@@ -48,7 +58,7 @@ class GuestbookController
                     $email = Guestbook::protectionData($_POST['email']);
                     $homepage = Guestbook::protectionData($_POST['homepage']);
                     $message = Guestbook::protectionData($_POST['message']);
-
+                    
                     // Валидация полей 
                     if (!Guestbook::checkName($username)) {
                         $errors[] = 'Юзернейм должен состоять из цифр и символов латинского алфавита !';
@@ -81,13 +91,13 @@ class GuestbookController
                             $errors[] = 'Проверка на робота не пройдена !';
                         }
                     } 
-                    
-                    // Работа с файлами
-                    if($_FILES['guest_file']['size'] != 0){
 
+                    // Работа с файлами
+                    if(isset($_FILES['guest_file']) && !$_FILES['guest_file']['name'] == "" ){
+                        
                         // Проверяем на ошибки
 			if($_FILES['guest_file']['error'] > 0){
-                            $errors[] = Guestbook::ErrUploadFile($_FILES['guest_file']['error']);
+                            $errors[] = Guestbook::errUploadFile($_FILES['guest_file']['error']);
                         }
                         
                         if(!Guestbook::checkFileImg($_FILES['guest_file']['type']) && !Guestbook::checkFileTxt($_FILES['guest_file']['type'])){
@@ -107,12 +117,18 @@ class GuestbookController
                         // Загружаем файл
                         Guestbook::uploadFile($_FILES, $file_name);
                     }
+                    
                     if ($errors == false) {  
-                        
                         // Создаем новое сообщение
                         if(!isset($_POST["update_row_id"]))
                         {
-                            Guestbook::addMessage($username, $email, $homepage, $message, $file_name, $browser, $ip);
+                            Guestbook::addMessage($username, $email, $homepage, $message, $file_name, $browser, $ip);                   
+                            
+                            // Получаем сообщения для гостевой книги (массив на отрисовку)
+                            $messages_guest_list = Guestbook::getMessagesFromGuestbook($pagination['start'], $pagination['messages_amount'], $search, $key, $order);    
+
+                            // Подключаем вид
+                            require_once(ROOT . '/views/guestbook/index.php');
                         }
                         // В остальных случаях обновляем старое сообщение
                         else
@@ -133,25 +149,22 @@ class GuestbookController
                             }
                             //Обновляем само сообщение
                             Guestbook::updateMessageFromGuestbook($id, $username, $email, $homepage, $message, $browser, $ip);
+                            
+                            //Получаем обновленное сообщение
+                            $messgae = Guestbook::getMessageOnIdFromGuestbook($id);
+                            
+                            //Формеруем JSON для ответа
+                            $content = '{"status": "success", "username": "'.$username.'", "email": "'.$email.'", "homepage": "'.$homepage.'", "message": "'.$message.'", "file_name": "'.$messgae['file'].'", "date": "'.$messgae['date'].'"}';
+
+                            // Подключаем вывод для ajax
+                            require_once(ROOT . '/views/content/ajax.php');
                         }
                     }
+
                 }
-                if(isset($_POST["edit_message"]))
+                if(isset($_POST["delete_message_id"])) //AJAX
                 { 
-                    // Флаг Создать новое сообщение или обновить старое (false - создать новое)
-                    $edit_message_button = true;
-                    
-                    $message_id = (int) Guestbook::protectionData($_POST["row_id"]);
-                    $edit_message_guest_list = Guestbook::getMessageOnIdFromGuestbook($message_id);
-                    
-                    $username = $edit_message_guest_list['username'];
-                    $email = $edit_message_guest_list['email'];
-                    $homepage = $edit_message_guest_list['homepage'];
-                    $message = $edit_message_guest_list['message'];
-                }
-                if(isset($_POST["delete_message"]))
-                { 
-                    $id = (int) Guestbook::protectionData($_POST["row_id"]);;
+                    $id = (int) Guestbook::protectionData($_POST["delete_message_id"]);
                     $old_file_name = Guestbook::getFileNameFromGuestbook($id);
                     
                     // Удаляем запись в бд
@@ -159,6 +172,12 @@ class GuestbookController
                     
                     // Удаляем файл с сервера
                     if(!empty($old_file_name)) Guestbook::deleteFileFromGuestbook($old_file_name);
+                    
+                    //Формеруем JSON для ответа
+                    $content = '{"status": "success"}';
+                    
+                    // Подключаем вывод для ajax
+                    require_once(ROOT . '/views/content/ajax.php');
                 }
                 if(isset($_POST["search_submit"]))
                 {
@@ -167,21 +186,33 @@ class GuestbookController
                     
                     if(!empty($search))
                     {
-                        header("Location: /guestbook/1/$search/id/desc");
+                        header("Location: /guestbook/".Guestbook::generateLink('search', $page, $search, $key, $order));
                     }
                     else
                     {
-                        header('Location: /guestbook/1/0/id/desc');
+                        header("Location: /guestbook/".Guestbook::generateLink('search', $page, $search, $key, $order));
                     }
                     
+                    // Получаем сообщения для гостевой книги (массив на отрисовку)
+                    $messages_guest_list = Guestbook::getMessagesFromGuestbook($pagination['start'], $pagination['messages_amount'], $search, $key, $order);    
+
+                    // Подключаем вид
+                    require_once(ROOT . '/views/guestbook/index.php');
                 }
+            }
+            else{
+                // Получаем сообщения для гостевой книги (массив на отрисовку)
+                $messages_guest_list = Guestbook::getMessagesFromGuestbook($pagination['start'], $pagination['messages_amount'], $search, $key, $order);    
+
+                // Подключаем вид
+                require_once(ROOT . '/views/guestbook/index.php');
             }
             
         // Получаем сообщения для гостевой книги (массив на отрисовку)
-        $messages_guest_list = Guestbook::getMessagesFromGuestbook($pagination['start'], $pagination['messages_amount'], $search, $key, $order);    
+        //$messages_guest_list = Guestbook::getMessagesFromGuestbook($pagination['start'], $pagination['messages_amount'], $search, $key, $order);    
 
         // Подключаем вид
-        require_once(ROOT . '/views/guestbook/index.php');
+        //require_once(ROOT . '/views/guestbook/index.php');
         return true;
     }
 

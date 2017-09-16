@@ -29,11 +29,11 @@
         <script src='https://www.google.com/recaptcha/api.js?hl=ru'></script>
         <script src="/template/js/view.js" type="text/javascript"></script>
         <script src="/template/js/drop-down.js" type="text/javascript"></script>
-        <script src="/template/js/guestbook-input-validation.js" type="text/javascript"></script>
+        <script src="/template/js/guestbook.js" type="text/javascript"></script>
         <!--<script src="https://cloud.tinymce.com/stable/tinymce.min.js"></script>
         <script>tinymce.init({ selector:'textarea' });</script>-->
-        <script src="/lib/tinymce/jquery.tinymce.min.js" type="text/javascript"></script>
+        <!--<script src="/lib/tinymce/jquery.tinymce.min.js" type="text/javascript"></script>-->
         <script src="/lib/tinymce/tinymce.min.js" type="text/javascript"></script>
-        <script>tinymce.init({ selector:'textarea', plugins: "link" });</script>
+        <!--<script>tinymce.init({ selector:'textarea', plugins: "link" });</script>-->
     </body>
 </html>

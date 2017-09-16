@@ -144,7 +144,7 @@ class UserController {
         }
 
         // Подключаем вид
-        require_once(ROOT . '/views/site/index.php');
+        require_once(ROOT . '/views/main/index.php');
         return true;
     }
     

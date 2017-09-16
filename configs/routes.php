@@ -3,7 +3,9 @@
 return array(
 
     //guestbook / страницы / поисковая фраза / колонка для сортировки / направление сортировки (desc asc)
-    'guestbook/([0-9]+)/([\s\a-zA-Z0-9_ ]+)/([a-zA-Z]+)/([a-zA-Z]+)' => 'guestbook/index/$1/$2/$3/$4',
+    //'guestbook/([0-9]+)/([\s\a-zA-Z0-9_ ]+)/([a-zA-Z]+)/([a-zA-Z]+)' => 'guestbook/index/$1/$2/$3/$4',
+    'guestbook' => 'guestbook/index',
+    'guestbook/([\s\a-zA-Z0-9_ ]+)' => 'guestbook/index/$1',
     
     'payment' => 'payment/index',
     

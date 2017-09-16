@@ -46,20 +46,21 @@ class Guestbook
      * @param string $order <p>Направление сортировки</p>
      * @return Array <p>Массив</p>
      */
-    public static function getMessagesFromGuestbook($start, $amount, $search = '', $key = 'id', $order = 'desc')
+    public static function getMessagesFromGuestbook($start, $amount, $search = '', $key = 'id', $order = 'DESC')
     {
         $db = Db::getConnection();
         
+        if(empty($key)) { $key = 'id'; }
+        if(empty($order)) { $order = 'DESC'; }
+        
         $newList = array();
         
-        $search = self::searchTextConvert($search);
-        
         $search = '%'.$search.'%';
-        
-        $allowed = array("date", "username", "email");
-        $num     = array_search($key, $allowed); 
-        $key = $allowed[$num];
-        $order  = (mb_strtoupper($order) == 'DESC') ? 'DESC' : 'ASC';
+
+        $allowed    = array("id", "date", "username", "email");
+        $num        = array_search($key, $allowed); 
+        $key        = $allowed[$num];
+        $order      = (mb_strtoupper($order) == 'DESC') ? 'DESC' : 'ASC';
 
         $sql = "SELECT * FROM mc_guestbook "
         . "WHERE date LIKE :search OR username LIKE :search OR email LIKE :search "
@@ -98,8 +99,6 @@ class Guestbook
         
         $newList = array();
         
-        $search = self::searchTextConvert($search);
-        
         $search = '%'.$search.'%';
                 
         $sql = 'SELECT COUNT(*) as count FROM mc_guestbook WHERE date LIKE :search OR username LIKE :search OR email LIKE :search '
@@ -125,6 +124,32 @@ class Guestbook
         return $order;
     }
     
+     /**
+     * Генерирует ссылку на сортировку
+     * @param string $type <p>search, sorting, pagination</p>
+     * @param string $page <p>Страница</p>
+     * @param string $search <p>Поисковая фраза</p>
+     * @param string $key <p>Название столбца для сортировки</p>
+     * @param string $order <p>Направление сортировки</p>
+     * @return string <p>Результат выполнения метода</p>
+     */
+    public static function generateLink($type, $page, $search, $key, $order)
+    {
+        if($type == 'sorting') $order = Guestbook::reversOrder($order);
+        if($type == 'search') { $page = ''; $key = ''; $order = ''; }
+        
+        $string = '';
+        
+        if(!empty($page)){ $string = $string . "page=$page&"; }
+        if(!empty($search)){ $string =  $string . "search=$search&"; }
+        if(!empty($key)){ $string =  $string . "key=$key&"; }
+        if(!empty($order)){ $string =  $string . "order=$order&"; }
+        
+        $string = trim($string, '&');
+        
+        return $string;
+    }
+    
     /**
      * Защищает данные от XSS-атак
      * @param string $data <p>Данные</p>
@@ -135,20 +160,6 @@ class Guestbook
         return strip_tags($data, '<a><code><i><strike><strong>'); //Удаляет HTML и PHP-теги из строки
         //$name = htmlentities($data, ENT_QUOTES, "UTF-8"); //Преобразует символы в соответствующие HTML сущности.
         //$name = htmlspecialchars($data, ENT_QUOTES); // Преобразует специальные символы в HTML-сущности
-    }
-    
-    /**
-     * Конвертирует текст поиска
-     * @param string $text <p>Текст</p>
-     * @return string <p>Результат выполнения метода</p>
-     */
-    public static function searchTextConvert($text)
-    {
-        $text = urldecode($text);
-        
-        $text == '0' ? $text = '' : $n = 1;
-        
-        return $text;
     }
     
     /**
@@ -182,10 +193,51 @@ class Guestbook
         $start = $page * $messages_amount - $messages_amount; 
         
         $newList['messages_amount'] = $messages_amount;
+        $newList['messages'] = $messages;
         $newList['total_pages'] = $total_pages;
         $newList['start'] = $start;
         
         return $newList;
+    }
+    
+    /**
+     * Генерирует страницы (пагинатор)
+     * @param int $page <p>Текущая страница</p>
+     * @param Array $pagination <p>Массив messages_amount messages total_pages start</p>
+     * @param string $search <p>Поисковая фраза</p>
+     * @param string $key <p>Название столбца для сортировки</p>
+     * @param string $order <p>Направление сортировки</p>
+     * @return Array <p>Результат выполнения метода</p>
+     */
+    public static function pagesDrawLink($page, $pagination, $search, $key, $order)
+    {
+        if($pagination['messages'] <= $pagination['messages_amount']){
+            return false;
+        }
+        
+        if(empty($page) or $page < 0) $page = 1; 
+        if($page > $pagination['total_pages']) $page = $pagination['total_pages'];
+        
+        $mess = Array();
+                                
+        // Проверяем нужны ли стрелки назад 
+        if ($page != 1) $mess[] = '<li><a href=/guestbook/'.Guestbook::generateLink('pagination', 1, $search, $key, $order).'> << </a></li>'
+        . '<li><a href=/guestbook/'.Guestbook::generateLink('pagination', ($page - 1), $search, $key, $order).'> < </a></li>'; 
+
+          
+        // Находим две ближайшие станицы с обоих краев, если они есть 
+        if($page - 2 > 0) $mess[] = '<li><a href= /guestbook/'.Guestbook::generateLink('pagination', ($page - 2), $search, $key, $order).'>'. ($page - 2) .'</a></li>'; 
+        if($page - 1 > 0) $mess[] = '<li><a href= /guestbook/'.Guestbook::generateLink('pagination', ($page - 1), $search, $key, $order).'>'. ($page - 1) .'</a></li>'; 
+        $mess[] = '<li class="active"><a href="">'. $page .'</a></li>'; ;
+        if($page + 1 <= $pagination['total_pages']) $mess[] = '<li><a href= /guestbook/'.Guestbook::generateLink('pagination', ($page + 1), $search, $key, $order).'>'. ($page + 1) .'</a></li>'; 
+        if($page + 2 <= $pagination['total_pages']) $mess[] = '<li><a href= /guestbook/'.Guestbook::generateLink('pagination', ($page + 2), $search, $key, $order).'>'. ($page + 2) .'</a></li>'; 
+        
+            
+        // Проверяем нужны ли стрелки вперед 
+        if ($page != $pagination['total_pages']) $mess[] = '<li><a href= /guestbook/'.Guestbook::generateLink('pagination', ($page + 1), $search, $key, $order).'>></a></li>' 
+        . '<li><a href= /guestbook/'.Guestbook::generateLink('pagination', $pagination['total_pages'], $search, $key, $order).'>>></a></li>'; 
+
+        return $mess;
     }
     
     /**
@@ -310,7 +362,7 @@ class Guestbook
      * @param int $id <p>id ошибки</p>
      * @return streeng <p></p>
      */
-    public static function ErrUploadFile($id)
+    public static function errUploadFile($id)
     {
        	$errUpload = array( 
             0 => 'Ошибок не возникло, файл был успешно загружен на сервер. ', 
